@@ -109,14 +109,16 @@ class QYMP3:
                 self.progress_label.config(text="Downloading...")
                 
                 retval = self.get_mp3(track)
-                if retval != 0:     # try again in a few seconds, sometimes this fixes things
-                    sleep(5)
-                    retval = self.get_mp3(track)
-
                 if retval == 2:
                     self.progress_label.config(text="Fehler: Der Link scheint abgeschnitten zu sein.")
-                elif retval != 0:
-                    self.progress_label.config(text="Fehler bei " + track.get("url"))
+                elif retval != 0:     # try again in a few seconds, sometimes this fixes things
+                    sleep(5)
+                    retval = self.get_mp3(track)
+                    if retval != 0:
+                        self.progress_label.config(text="Fehler bei " + track.get("url"))
+                    else:
+                        self.progress_label.config(text="Fertig!")
+                        self.urlbox_entry.delete(0, "end")
                 else:
                     self.progress_label.config(text="Fertig!")
                     self.urlbox_entry.delete(0, "end")
@@ -135,8 +137,8 @@ class QYMP3:
         ytdl_options.update({"outtmpl": save_path})
 
         try:
-            youtube_dl.YoutubeDL(ytdl_options).download([url])
-            return 0
+            retval = youtube_dl.YoutubeDL(ytdl_options).download([url])
+            return retval
         except DownloadError as e:
             error_string = e.__str__()
             if error_string.find("ERROR: Incomplete YouTube") >= 0:
