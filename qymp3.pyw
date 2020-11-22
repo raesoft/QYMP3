@@ -1,5 +1,4 @@
 import sys
-import subprocess
 from threading import Thread
 from tkinter import StringVar, Tk
 from tkinter import Frame
@@ -16,6 +15,21 @@ from configparser import ConfigParser
 from queue import Queue
 from queue import Empty
 from time import sleep
+import youtube_dl
+from youtube_dl.utils import DownloadError
+
+
+ytdl_options = {
+    "format": "251",
+    "noplaylist": True,
+    "quiet": True,
+    "no_warnings": True,
+    "postprocessors": [{
+        "key": "FFmpegExtractAudio",
+        "preferredcodec": "mp3",
+        "preferredquality": "192"
+    }]
+}
 
 
 class QYMP3:
@@ -93,15 +107,16 @@ class QYMP3:
 
                 self.progress_bar.start()
                 self.progress_label.config(text="Downloading...")
+                
                 retval = self.get_mp3(track)
-                if retval != 0:
+                if retval != 0:     # try again in a few seconds, sometimes this fixes things
                     sleep(5)
                     retval = self.get_mp3(track)
-                    if retval != 0:
-                        self.progress_label.config(text="Fehler bei " + track.get("url"))
-                    else:
-                        self.progress_label.config(text="Fertig!")
-                        self.urlbox_entry.delete(0, "end")
+
+                if retval == 2:
+                    self.progress_label.config(text="Fehler: Der Link scheint abgeschnitten zu sein.")
+                elif retval != 0:
+                    self.progress_label.config(text="Fehler bei " + track.get("url"))
                 else:
                     self.progress_label.config(text="Fertig!")
                     self.urlbox_entry.delete(0, "end")
@@ -117,7 +132,20 @@ class QYMP3:
         url = track.get("url")
         save_path = track.get("save_path")
 
-        return subprocess.run([
+        ytdl_options.update({"outtmpl": save_path})
+
+        try:
+            youtube_dl.YoutubeDL(ytdl_options).download([url])
+            return 0
+        except DownloadError as e:
+            error_string = e.__str__()
+            if error_string.find("ERROR: Incomplete YouTube") >= 0:
+                return 2
+            return 1
+
+        #subprocess.run([]).returncode
+        """
+        return subprocess.call([
             "youtube-dl", 
             "--extract-audio",
             "--audio-format", 
@@ -130,7 +158,8 @@ class QYMP3:
             "-f",
             "251",
             url
-        ]).returncode
+        ])
+        """
 
 
     def add_to_download_queue(self):
