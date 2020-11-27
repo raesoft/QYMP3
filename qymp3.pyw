@@ -168,10 +168,29 @@ class QYMP3:
         save_path = self.save_path + "/%(title)s.%(ext)s"
         url = self.urlbox_entry.get()
         if url.startswith("https://www.youtube.com/") or url.startswith("https://youtu.be/") or url.startswith("https://m.youtube.com/"):
-            track = {"url": url, "save_path": save_path}
+
+            video_id = self.get_video_id(url)
+            if (video_id is None) or (len(video_id) != 11):
+                self.progress_label.config(text="Der Link ist abgeschnitten oder kein Youtube Link")
+                return
+                
+            track_url = "https://www.youtube.com/watch?v=" + video_id
+            track = {"url": track_url, "save_path": save_path}
             self.download_queue.put(track)
         else:
             self.progress_label.config(text="Das ist kein Youtube Link")
+
+
+    def get_video_id(self, url: str):
+        """ Get the 11 chars long video id from a Youtube link. """
+        if url.find("?v=") > 0:
+            return url[url.find("?v=") + 3 : url.find("?v=") + 14] 
+        elif url.find("&v=") > 0:
+            return url[url.find("&v=") + 3 : url.find("&v=") + 14]
+        elif url.find(".be/") > 0:
+            return url[url.find(".be/") + 4 : url.find(".be/") + 15]
+        else:
+            return None
 
 
     def directory_selection(self):
